@@ -10,7 +10,6 @@ The lab gets updated regularly, so do [sync your fork with the upstream](https:/
 - [Tasks](#tasks)
   - [Prerequisites](#prerequisites)
   - [Required](#required)
-  - [Optional (recommended)](#optional-recommended)
 
 ## Lab story
 
@@ -86,7 +85,4 @@ In simple words, you should be able to say:
 1. [Plan and Scaffold](./lab/tasks/required/task-1.md#plan-and-scaffold)
 2. [Backend Integration](./lab/tasks/required/task-2.md#backend-integration)
 3. [Intent-Based Natural Language Routing](./lab/tasks/required/task-3.md#intent-based-natural-language-routing)
-
-### Optional (recommended)
-
-1. [Deploy and Polish](./lab/tasks/optional/task-1.md#deploy-and-polish)
+4. [Deploy and Document](./lab/tasks/required/task-4.md#deploy-and-document)

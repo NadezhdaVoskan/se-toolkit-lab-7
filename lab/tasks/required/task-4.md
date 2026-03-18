@@ -1,6 +1,6 @@
-# Deploy and Polish
+# Deploy and Document
 
-Deploy the bot on your VM alongside the backend and add finishing touches.
+Deploy the bot on your VM alongside the backend and document the setup.
 
 ## What you will do
 
