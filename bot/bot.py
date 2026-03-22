@@ -12,9 +12,11 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
+    ExtBot,
     MessageHandler,
     filters,
 )
+from telegram.request import HTTPXRequest
 
 from handlers.core import (
     handle_help,
@@ -178,7 +180,15 @@ def telegram_mode() -> None:
             f"Inline keyboard configured with {len(START_KEYBOARD.inline_keyboard)} rows."
         )
 
-        application = Application.builder().token(config.BOT_TOKEN).build()
+        request = HTTPXRequest(
+            connection_pool_size=8,
+            connect_timeout=30.0,
+            read_timeout=30.0,
+            write_timeout=30.0,
+            pool_timeout=30.0,
+        )
+        bot = ExtBot(token=config.BOT_TOKEN, request=request)
+        application = Application.builder().bot(bot).build()
         application.add_handler(CommandHandler("start", _handle_start_command))
         application.add_handler(CommandHandler("help", _handle_help_command))
         application.add_handler(CommandHandler("health", _handle_health_command))
