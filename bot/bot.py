@@ -7,6 +7,7 @@ import argparse
 import sys
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import TimedOut
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -81,11 +82,35 @@ def test_mode(command: str) -> None:
     raise SystemExit(0)
 
 
-async def _send_start(update: Update) -> None:
+async def _safe_reply_text(
+    update: Update,
+    text: str,
+    *,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Send a Telegram reply with a retry and a plain-text fallback."""
     message = update.effective_message
     if message is None:
         return
-    await message.reply_text(handle_start(), reply_markup=START_KEYBOARD)
+
+    try:
+        await message.reply_text(text, reply_markup=reply_markup)
+        return
+    except TimedOut:
+        pass
+
+    try:
+        await message.reply_text(text, reply_markup=reply_markup)
+        return
+    except TimedOut:
+        pass
+
+    if reply_markup is not None:
+        await message.reply_text(text)
+
+
+async def _send_start(update: Update) -> None:
+    await _safe_reply_text(update, handle_start(), reply_markup=START_KEYBOARD)
 
 
 async def _handle_start_command(
@@ -101,10 +126,7 @@ async def _handle_help_command(
 ) -> None:
     """Reply to /help."""
     del context
-    message = update.effective_message
-    if message is None:
-        return
-    await message.reply_text(handle_help())
+    await _safe_reply_text(update, handle_help())
 
 
 async def _handle_health_command(
@@ -112,10 +134,7 @@ async def _handle_health_command(
 ) -> None:
     """Reply to /health."""
     del context
-    message = update.effective_message
-    if message is None:
-        return
-    await message.reply_text(handle_health())
+    await _safe_reply_text(update, handle_health())
 
 
 async def _handle_labs_command(
@@ -123,21 +142,15 @@ async def _handle_labs_command(
 ) -> None:
     """Reply to /labs."""
     del context
-    message = update.effective_message
-    if message is None:
-        return
-    await message.reply_text(handle_labs())
+    await _safe_reply_text(update, handle_labs())
 
 
 async def _handle_scores_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Reply to /scores with an optional lab argument."""
-    message = update.effective_message
-    if message is None:
-        return
     lab = " ".join(context.args)
-    await message.reply_text(handle_scores(lab))
+    await _safe_reply_text(update, handle_scores(lab))
 
 
 async def _handle_text_message(
@@ -148,7 +161,7 @@ async def _handle_text_message(
     message = update.effective_message
     if message is None or message.text is None:
         return
-    await message.reply_text(route_command(message.text))
+    await _safe_reply_text(update, route_command(message.text))
 
 
 async def _handle_callback(
@@ -165,7 +178,7 @@ async def _handle_callback(
         await _send_start(update)
         return
 
-    await query.message.reply_text(route_command(query.data))
+    await _safe_reply_text(update, route_command(query.data))
 
 
 def telegram_mode() -> None:
