@@ -15,6 +15,11 @@ class LLMError(RuntimeError):
 
 
 MAX_TOOL_ROUNDS = 8
+POST_TOOL_FOLLOW_UP = (
+    "Continue from the tool results. "
+    "If more data is needed, call the next tool now. "
+    "Otherwise, provide the final concise answer for the user."
+)
 
 
 def _headers() -> dict[str, str]:
@@ -77,6 +82,7 @@ def run_tool_loop(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
+    used_tools = False
 
     for _ in range(MAX_TOOL_ROUNDS):
         message = _chat_completion(messages, tools)
@@ -87,6 +93,7 @@ def run_tool_loop(
 
         tool_calls = message.get("tool_calls") or []
         if tool_calls:
+            used_tools = True
             assistant_message["tool_calls"] = tool_calls
             messages.append(assistant_message)
 
@@ -111,6 +118,11 @@ def run_tool_loop(
 
         content = message.get("content")
         if isinstance(content, str) and content.strip():
+            if used_tools:
+                messages.append({"role": "assistant", "content": content.strip()})
+                messages.append({"role": "user", "content": POST_TOOL_FOLLOW_UP})
+                used_tools = False
+                continue
             return content.strip()
 
     raise LLMError("LLM error: tool loop exceeded the maximum number of steps.")
