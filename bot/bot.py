@@ -4,6 +4,8 @@
 import argparse
 import sys
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 from handlers.core import (
     handle_help,
     handle_health,
@@ -13,6 +15,26 @@ from handlers.core import (
     handle_unknown,
 )
 from services.intent_router import route_intent
+
+
+START_KEYBOARD = InlineKeyboardMarkup(
+    [
+        [
+            InlineKeyboardButton("Labs", callback_data="/labs"),
+            InlineKeyboardButton("Health", callback_data="/health"),
+        ],
+        [
+            InlineKeyboardButton(
+                "Top learners",
+                callback_data="who are the top 5 students in lab 4",
+            ),
+            InlineKeyboardButton(
+                "Lowest pass rate",
+                callback_data="which lab has the lowest pass rate",
+            ),
+        ],
+    ]
+)
 
 
 def route_command(command_str: str) -> str:
@@ -55,6 +77,7 @@ def telegram_mode() -> None:
         config.validate_for_telegram()
         print("Starting Telegram bot...")
         print("Bot is running. Send /start to your bot in Telegram.")
+        print(f"Inline keyboard configured with {len(START_KEYBOARD.inline_keyboard)} rows.")
         print("Telegram mode not yet implemented. Use --test mode for now.")
         raise SystemExit(1)
     except ValueError as error:
