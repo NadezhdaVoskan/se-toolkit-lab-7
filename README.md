@@ -95,3 +95,52 @@ By the end of this lab, you should be able to say:
 ### Optional
 
 1. [Flutter Web Chatbot](./lab/tasks/optional/task-1.md)
+
+## Deploy
+
+Run the bot as a Docker service alongside `backend`, `postgres`, and `caddy`.
+
+Required environment variables come from `.env.docker.secret`:
+- `BOT_TOKEN`
+- `LMS_API_KEY`
+- `LLM_API_KEY`
+- `LLM_API_BASE_URL`
+- `LLM_API_MODEL`
+
+Inside Docker, the bot talks to the backend via `http://backend:8000`, not `localhost`.
+If your LLM proxy is outside the compose network, set `LLM_API_BASE_URL` to a reachable host such as `http://host.docker.internal:42005/v1`.
+
+Before switching to Docker, stop the old background bot process:
+
+```bash
+pkill -f "bot.py" 2>/dev/null
+```
+
+Build and start the stack:
+
+```bash
+docker compose --env-file .env.docker.secret up --build -d
+docker compose --env-file .env.docker.secret ps
+```
+
+Check that the bot container is running:
+
+```bash
+docker compose --env-file .env.docker.secret ps bot
+docker compose --env-file .env.docker.secret logs bot --tail 20
+```
+
+Check that the backend is still healthy:
+
+```bash
+curl -sf http://localhost:42002/docs
+```
+
+Verify the bot in Telegram:
+- `/start`
+- `/health`
+- `what labs are available?`
+- `which lab has the lowest pass rate?`
+
+If the bot restarts in a loop, inspect `docker compose --env-file .env.docker.secret logs bot --tail 20`.
+The most common causes are a missing `BOT_TOKEN`, a bad `LLM_API_BASE_URL`, or using `localhost` for the backend from inside the container.

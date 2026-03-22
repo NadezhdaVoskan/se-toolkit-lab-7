@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 """LMS Telegram Bot entry point."""
 
+from __future__ import annotations
+
 import argparse
 import sys
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import BadRequest, TimedOut
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    ExtBot,
+    MessageHandler,
+    filters,
+)
+from telegram.request import HTTPXRequest
 
 from handlers.core import (
     handle_help,
@@ -69,17 +82,153 @@ def test_mode(command: str) -> None:
     raise SystemExit(0)
 
 
+async def _safe_reply_text(
+    update: Update,
+    text: str,
+    *,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Send a Telegram reply with a retry and a plain-text fallback."""
+    message = update.effective_message
+    if message is None:
+        return
+
+    try:
+        await message.reply_text(text, reply_markup=reply_markup)
+        return
+    except TimedOut:
+        pass
+
+    try:
+        await message.reply_text(text, reply_markup=reply_markup)
+        return
+    except TimedOut:
+        pass
+
+    if reply_markup is not None:
+        await message.reply_text(text)
+
+
+async def _send_start(update: Update) -> None:
+    await _safe_reply_text(update, handle_start(), reply_markup=START_KEYBOARD)
+
+
+async def _handle_start_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Reply to /start with inline buttons."""
+    del context
+    await _send_start(update)
+
+
+async def _handle_help_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Reply to /help."""
+    del context
+    await _safe_reply_text(update, handle_help())
+
+
+async def _handle_health_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Reply to /health."""
+    del context
+    await _safe_reply_text(update, handle_health())
+
+
+async def _handle_labs_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Reply to /labs."""
+    del context
+    await _safe_reply_text(update, handle_labs())
+
+
+async def _handle_scores_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Reply to /scores with an optional lab argument."""
+    lab = " ".join(context.args)
+    await _safe_reply_text(update, handle_scores(lab))
+
+
+async def _handle_text_message(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Route plain text through the existing intent router."""
+    del context
+    message = update.effective_message
+    if message is None or message.text is None:
+        return
+    await _safe_reply_text(update, route_command(message.text))
+
+
+async def _handle_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle inline button presses by routing callback text."""
+    del context
+    query = update.callback_query
+    if query is None or query.data is None:
+        return
+
+    try:
+        await query.answer()
+    except (TimedOut, BadRequest):
+        pass
+
+    if query.data == "/start":
+        await _send_start(update)
+        return
+
+    await _safe_reply_text(update, route_command(query.data))
+
+
 def telegram_mode() -> None:
-    """Start the Telegram bot."""
+    """Start the Telegram bot with long polling."""
     try:
         from config import config
 
         config.validate_for_telegram()
         print("Starting Telegram bot...")
         print("Bot is running. Send /start to your bot in Telegram.")
-        print(f"Inline keyboard configured with {len(START_KEYBOARD.inline_keyboard)} rows.")
-        print("Telegram mode not yet implemented. Use --test mode for now.")
-        raise SystemExit(1)
+        print(
+            f"Inline keyboard configured with {len(START_KEYBOARD.inline_keyboard)} rows."
+        )
+
+        request = HTTPXRequest(
+            connection_pool_size=8,
+            connect_timeout=30.0,
+            read_timeout=30.0,
+            write_timeout=30.0,
+            pool_timeout=30.0,
+            httpx_kwargs={"trust_env": False},
+        )
+        get_updates_request = HTTPXRequest(
+            connection_pool_size=2,
+            connect_timeout=30.0,
+            read_timeout=90.0,
+            write_timeout=30.0,
+            pool_timeout=30.0,
+            httpx_kwargs={"trust_env": False},
+        )
+        bot = ExtBot(
+            token=config.BOT_TOKEN,
+            request=request,
+            get_updates_request=get_updates_request,
+        )
+        application = Application.builder().bot(bot).build()
+        application.add_handler(CommandHandler("start", _handle_start_command))
+        application.add_handler(CommandHandler("help", _handle_help_command))
+        application.add_handler(CommandHandler("health", _handle_health_command))
+        application.add_handler(CommandHandler("labs", _handle_labs_command))
+        application.add_handler(CommandHandler("scores", _handle_scores_command))
+        application.add_handler(CallbackQueryHandler(_handle_callback))
+        application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, _handle_text_message)
+        )
+        application.run_polling()
     except ValueError as error:
         print(f"Configuration error: {error}", file=sys.stderr)
         raise SystemExit(1)
