@@ -9,9 +9,18 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env.bot.secret from the current directory
-env_path = Path(__file__).parent / ".env.bot.secret"
-load_dotenv(env_path)
+
+def _load_env_files() -> None:
+    """Load .env.bot.secret from the repo root and bot directory if present."""
+    bot_dir = Path(__file__).parent
+    repo_root = bot_dir.parent
+
+    for env_path in (repo_root / ".env.bot.secret", bot_dir / ".env.bot.secret"):
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+
+
+_load_env_files()
 
 
 class Config:
