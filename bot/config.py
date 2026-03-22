@@ -11,11 +11,15 @@ from dotenv import load_dotenv
 
 
 def _load_env_files() -> None:
-    """Load .env.bot.secret from the repo root and bot directory if present."""
+    """Load bot config, falling back to backend secrets from the repo root."""
     bot_dir = Path(__file__).parent
     repo_root = bot_dir.parent
 
-    for env_path in (repo_root / ".env.bot.secret", bot_dir / ".env.bot.secret"):
+    for env_path in (
+        repo_root / ".env.docker.secret",
+        repo_root / ".env.bot.secret",
+        bot_dir / ".env.bot.secret",
+    ):
         if env_path.exists():
             load_dotenv(env_path, override=True)
 
