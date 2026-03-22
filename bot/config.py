@@ -21,7 +21,7 @@ def _load_env_files() -> None:
         bot_dir / ".env.bot.secret",
     ):
         if env_path.exists():
-            load_dotenv(env_path, override=True)
+            load_dotenv(env_path, override=False)
 
 
 _load_env_files()
