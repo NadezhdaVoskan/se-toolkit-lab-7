@@ -14,7 +14,7 @@ class LLMError(RuntimeError):
     """User-facing LLM error."""
 
 
-MAX_TOOL_ROUNDS = 8
+MAX_TOOL_ROUNDS = 16
 POST_TOOL_FOLLOW_UP = (
     "Continue from the tool results. "
     "Do not describe plans or say that you will check something. "
