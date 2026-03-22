@@ -17,8 +17,18 @@ class LLMError(RuntimeError):
 MAX_TOOL_ROUNDS = 8
 POST_TOOL_FOLLOW_UP = (
     "Continue from the tool results. "
-    "If more data is needed, call the next tool now. "
-    "Otherwise, provide the final concise answer for the user."
+    "Do not describe plans or say that you will check something. "
+    "Either call the next tool immediately, or give the final user-facing answer now."
+)
+
+NON_FINAL_PHRASES = (
+    "i will call a tool",
+    "let me check",
+    "i need to check",
+    "i'll check",
+    "i will check",
+    "let me look",
+    "i need more data",
 )
 
 
@@ -118,10 +128,15 @@ def run_tool_loop(
 
         content = message.get("content")
         if isinstance(content, str) and content.strip():
+            normalized_content = content.strip().lower()
             if used_tools:
                 messages.append({"role": "assistant", "content": content.strip()})
                 messages.append({"role": "user", "content": POST_TOOL_FOLLOW_UP})
                 used_tools = False
+                continue
+            if any(phrase in normalized_content for phrase in NON_FINAL_PHRASES):
+                messages.append({"role": "assistant", "content": content.strip()})
+                messages.append({"role": "user", "content": POST_TOOL_FOLLOW_UP})
                 continue
             return content.strip()
 
