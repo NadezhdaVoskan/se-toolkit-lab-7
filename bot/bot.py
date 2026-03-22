@@ -15,7 +15,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from handlers import (
+from handlers.core import (
     handle_help,
     handle_health,
     handle_labs,

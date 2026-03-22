@@ -4,7 +4,7 @@ Handlers are pure functions that take input and return text.
 They don't depend on Telegram — same function works from --test mode and from Telegram.
 """
 
-from .commands import (
+from .core import (
     handle_help,
     handle_health,
     handle_labs,

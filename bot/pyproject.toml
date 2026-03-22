@@ -9,7 +9,13 @@ description = "LMS Telegram Bot"
 requires-python = ">=3.11"
 dependencies = [
     "python-dotenv>=1.0.0",
-    "aiogram>=3.20",
+    "python-telegram-bot>=20.0",
     "httpx>=0.28.1",
-    "pydantic-settings>=2.12.0",
 ]
+
+[tool.setuptools]
+packages = ["handlers", "services"]
+
+[tool.setuptools.package-data]
+handlers = ["py.typed"]
+services = ["py.typed"]

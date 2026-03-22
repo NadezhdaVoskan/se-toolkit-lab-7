@@ -1,10 +1,10 @@
-"""Bot command handlers.
+"""Core command handlers for the LMS bot.
 
-Pure functions that map commands to responses.
+Pure functions that map Telegram commands to responses.
 No Telegram dependencies — testable from CLI and unit tests.
 """
 
-from .core import (
+from .basic import (
     handle_help,
     handle_health,
     handle_labs,
