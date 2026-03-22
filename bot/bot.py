@@ -199,8 +199,21 @@ def telegram_mode() -> None:
             read_timeout=30.0,
             write_timeout=30.0,
             pool_timeout=30.0,
+            httpx_kwargs={"trust_env": False},
         )
-        bot = ExtBot(token=config.BOT_TOKEN, request=request)
+        get_updates_request = HTTPXRequest(
+            connection_pool_size=2,
+            connect_timeout=30.0,
+            read_timeout=90.0,
+            write_timeout=30.0,
+            pool_timeout=30.0,
+            httpx_kwargs={"trust_env": False},
+        )
+        bot = ExtBot(
+            token=config.BOT_TOKEN,
+            request=request,
+            get_updates_request=get_updates_request,
+        )
         application = Application.builder().bot(bot).build()
         application.add_handler(CommandHandler("start", _handle_start_command))
         application.add_handler(CommandHandler("help", _handle_help_command))
