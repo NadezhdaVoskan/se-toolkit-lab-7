@@ -7,7 +7,7 @@ import argparse
 import sys
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.error import TimedOut
+from telegram.error import BadRequest, TimedOut
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -173,7 +173,11 @@ async def _handle_callback(
     if query is None or query.data is None:
         return
 
-    await query.answer()
+    try:
+        await query.answer()
+    except (TimedOut, BadRequest):
+        pass
+
     if query.data == "/start":
         await _send_start(update)
         return
