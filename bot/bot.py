@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
-"""LMS Telegram Bot — Entry point.
-
-Supports two modes:
-  1. --test mode: Test handlers without Telegram (CLI)
-  2. Telegram mode: Run as a Telegram bot
-
-Usage:
-  uv run bot.py --test "/start"
-  uv run bot.py --test "/help"
-  uv run bot.py                    # Telegram mode
-"""
+"""LMS Telegram Bot entry point."""
 
 import argparse
 import sys
-from pathlib import Path
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from handlers.core import (
     handle_help,
@@ -23,68 +14,75 @@ from handlers.core import (
     handle_start,
     handle_unknown,
 )
+from services.intent_router import route_intent
+
+
+START_KEYBOARD = InlineKeyboardMarkup(
+    [
+        [
+            InlineKeyboardButton("Labs", callback_data="/labs"),
+            InlineKeyboardButton("Health", callback_data="/health"),
+        ],
+        [
+            InlineKeyboardButton(
+                "Top learners",
+                callback_data="who are the top 5 students in lab 4",
+            ),
+            InlineKeyboardButton(
+                "Lowest pass rate",
+                callback_data="which lab has the lowest pass rate",
+            ),
+        ],
+    ]
+)
 
 
 def route_command(command_str: str) -> str:
-    """Route a command string to the appropriate handler.
-    
-    Args:
-        command_str: User input (e.g., "/start", "/help", "/scores lab-04")
-    
-    Returns:
-        Handler response as a string.
-    """
-    # Remove leading/trailing whitespace
+    """Route a slash command or plain-text message to the right handler."""
     command_str = command_str.strip()
-    
-    # Parse command and arguments
-    parts = command_str.split(maxsplit=1)
-    if not parts:
+    if not command_str:
         return handle_unknown(command_str)
-    
+
+    if not command_str.startswith("/"):
+        return route_intent(command_str)
+
+    parts = command_str.split(maxsplit=1)
     command = parts[0].lower()
     arg = parts[1] if len(parts) > 1 else ""
-    
-    # Route to appropriate handler
+
     if command == "/start":
         return handle_start()
-    elif command == "/help":
+    if command == "/help":
         return handle_help()
-    elif command == "/health":
+    if command == "/health":
         return handle_health()
-    elif command == "/labs":
+    if command == "/labs":
         return handle_labs()
-    elif command == "/scores":
+    if command == "/scores":
         return handle_scores(arg)
-    else:
-        return handle_unknown(command_str)
+    return handle_unknown(command_str)
 
 
 def test_mode(command: str) -> None:
-    """Run a single command in test mode (no Telegram connection).
-    
-    Args:
-        command: Command string (e.g., "/start")
-    """
-    response = route_command(command)
-    print(response)
-    sys.exit(0)
+    """Run a single command in test mode."""
+    print(route_command(command))
+    raise SystemExit(0)
 
 
 def telegram_mode() -> None:
-    """Start the Telegram bot (full mode)."""
+    """Start the Telegram bot."""
     try:
         from config import config
-        
+
         config.validate_for_telegram()
-        print("🤖 Starting Telegram bot...")
-        print(f"Bot is running. Send /start to your bot in Telegram.")
-        # Minimal placeholder — full implementation in Task 2
-        print("⚠️  Telegram mode not yet implemented. Use --test mode for now.")
-        sys.exit(1)
-    except ValueError as e:
-        print(f"❌ Configuration error: {e}", file=sys.stderr)
-        sys.exit(1)
+        print("Starting Telegram bot...")
+        print("Bot is running. Send /start to your bot in Telegram.")
+        print(f"Inline keyboard configured with {len(START_KEYBOARD.inline_keyboard)} rows.")
+        print("Telegram mode not yet implemented. Use --test mode for now.")
+        raise SystemExit(1)
+    except ValueError as error:
+        print(f"Configuration error: {error}", file=sys.stderr)
+        raise SystemExit(1)
 
 
 def main() -> None:
@@ -95,7 +93,7 @@ def main() -> None:
         epilog=(
             "Examples:\n"
             "  uv run bot.py --test \"/start\"\n"
-            "  uv run bot.py --test \"/help\"\n"
+            "  uv run bot.py --test \"what labs are available\"\n"
             "  uv run bot.py                    # Telegram mode"
         ),
     )
@@ -103,15 +101,13 @@ def main() -> None:
         "--test",
         type=str,
         metavar="COMMAND",
-        help="Run a single command in test mode (no Telegram)",
+        help="Run a single command in test mode",
     )
-    
+
     args = parser.parse_args()
-    
     if args.test:
         test_mode(args.test)
-    else:
-        telegram_mode()
+    telegram_mode()
 
 
 if __name__ == "__main__":

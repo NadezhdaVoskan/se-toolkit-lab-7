@@ -70,6 +70,21 @@ def _get(path: str, params: dict[str, str] | None = None) -> Any:
         raise _format_error(error) from None
 
 
+def _post(path: str, json_data: dict[str, Any] | None = None) -> Any:
+    try:
+        with httpx.Client(
+            base_url=config.LMS_API_BASE_URL,
+            headers=_headers(),
+            timeout=TIMEOUT_SECONDS,
+            trust_env=False,
+        ) as client:
+            response = client.post(path, json=json_data)
+            response.raise_for_status()
+            return response.json()
+    except (httpx.HTTPError, ValueError) as error:
+        raise _format_error(error) from None
+
+
 def get_items() -> list[dict[str, Any]]:
     """Return LMS items."""
     data = _get("/items/")
@@ -84,3 +99,64 @@ def get_pass_rates(lab: str) -> list[dict[str, Any]]:
     if isinstance(data, list):
         return data
     raise BackendError("Backend error: invalid response from /analytics/pass-rates")
+
+
+def get_learners() -> list[dict[str, Any]]:
+    """Return all enrolled learners."""
+    data = _get("/learners/")
+    if isinstance(data, list):
+        return data
+    raise BackendError("Backend error: invalid response from /learners/")
+
+
+def get_scores(lab: str) -> list[dict[str, Any]]:
+    """Return score buckets for a lab."""
+    data = _get("/analytics/scores", params={"lab": lab})
+    if isinstance(data, list):
+        return data
+    raise BackendError("Backend error: invalid response from /analytics/scores")
+
+
+def get_timeline(lab: str) -> list[dict[str, Any]]:
+    """Return submission timeline for a lab."""
+    data = _get("/analytics/timeline", params={"lab": lab})
+    if isinstance(data, list):
+        return data
+    raise BackendError("Backend error: invalid response from /analytics/timeline")
+
+
+def get_groups(lab: str) -> list[dict[str, Any]]:
+    """Return group performance for a lab."""
+    data = _get("/analytics/groups", params={"lab": lab})
+    if isinstance(data, list):
+        return data
+    raise BackendError("Backend error: invalid response from /analytics/groups")
+
+
+def get_top_learners(lab: str, limit: int = 5) -> list[dict[str, Any]]:
+    """Return top learners for a lab."""
+    data = _get(
+        "/analytics/top-learners",
+        params={"lab": lab, "limit": str(limit)},
+    )
+    if isinstance(data, list):
+        return data
+    raise BackendError("Backend error: invalid response from /analytics/top-learners")
+
+
+def get_completion_rate(lab: str) -> dict[str, Any]:
+    """Return completion-rate summary for a lab."""
+    data = _get("/analytics/completion-rate", params={"lab": lab})
+    if isinstance(data, dict):
+        return data
+    raise BackendError(
+        "Backend error: invalid response from /analytics/completion-rate"
+    )
+
+
+def trigger_sync() -> dict[str, Any]:
+    """Trigger ETL sync and return its summary."""
+    data = _post("/pipeline/sync", json_data={})
+    if isinstance(data, dict):
+        return data
+    raise BackendError("Backend error: invalid response from /pipeline/sync")
